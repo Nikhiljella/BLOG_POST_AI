@@ -23,8 +23,8 @@ class AppError(Exception):
     pass
 
 
-def load_settings() -> dict[str, str]:
-    load_dotenv()
+def load_settings(env_file: str = ".env", require_blog_id: bool = True) -> dict[str, str]:
+    load_dotenv(env_file, override=True)
 
     settings = {
         "gemini_api_key": os.getenv("GEMINI_API_KEY", "").strip(),
@@ -36,7 +36,9 @@ def load_settings() -> dict[str, str]:
         "posts_log_path": os.getenv("POSTS_LOG_PATH", "posts.json").strip(),
     }
 
-    required = ["gemini_api_key", "blog_id", "client_id", "client_secret"]
+    required = ["gemini_api_key", "client_id", "client_secret"]
+    if require_blog_id:
+        required.append("blog_id")
     missing = [name for name in required if not settings[name]]
     if missing:
         readable = ", ".join(missing)
@@ -138,6 +140,24 @@ def get_blogger_service(settings: dict[str, str]):
     return build("blogger", "v3", credentials=credentials)
 
 
+def list_blogs(settings: dict[str, str]) -> list[dict[str, Any]]:
+    service = get_blogger_service(settings)
+    try:
+        response = service.blogs().listByUser(userId="self").execute()
+    except HttpError as exc:
+        raise AppError(f"Blogger API failed while listing blogs: {exc}") from exc
+
+    return response.get("items", [])
+
+
+def get_blog(settings: dict[str, str]) -> dict[str, Any]:
+    service = get_blogger_service(settings)
+    try:
+        return service.blogs().get(blogId=settings["blog_id"]).execute()
+    except HttpError as exc:
+        raise AppError(f"Blogger API failed while reading target blog: {exc}") from exc
+
+
 def publish_to_blogger(settings: dict[str, str], post: dict[str, Any]) -> dict[str, Any]:
     service = get_blogger_service(settings)
     body = {
@@ -177,6 +197,7 @@ def build_log_record(settings: dict[str, str], post: dict[str, Any], blogger_pos
         "created_at": datetime.now(timezone.utc).isoformat(),
         "title": post["title"],
         "status": "dry_run" if blogger_post is None else settings["post_status"],
+        "blogger_blog_id": settings["blog_id"],
         "blogger_post_id": None if blogger_post is None else blogger_post.get("id"),
         "blogger_url": None if blogger_post is None else blogger_post.get("url"),
         "provider": "gemini",
@@ -188,12 +209,33 @@ def build_log_record(settings: dict[str, str], post: dict[str, Any], blogger_pos
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate an AI blog post and send it to Google Blogger.")
+    parser.add_argument("--env-file", default=".env", help="Path to the env file to load. Defaults to .env.")
     parser.add_argument("--topic", help="Optional topic or instruction for the blog post.")
     parser.add_argument("--dry-run", action="store_true", help="Generate content and log it without publishing to Blogger.")
+    parser.add_argument("--list-blogs", action="store_true", help="List Blogger blogs available to the authorized account.")
     args = parser.parse_args()
 
     try:
-        settings = load_settings()
+        settings = load_settings(args.env_file, require_blog_id=not args.list_blogs)
+
+        if args.list_blogs:
+            blogs = list_blogs(settings)
+            if not blogs:
+                print("No Blogger blogs found for this Google account.")
+                return 0
+
+            for blog in blogs:
+                print(f"{blog.get('id')} | {blog.get('name')} | {blog.get('url')}")
+            return 0
+
+        target_blog = get_blog(settings)
+        print(
+            "Target blog: "
+            f"{target_blog.get('name', 'Unknown')} "
+            f"({settings['blog_id']}) "
+            f"{target_blog.get('url', '')}"
+        )
+
         post = generate_post(settings, args.topic)
         blogger_post = None if args.dry_run else publish_to_blogger(settings, post)
         append_log(Path(settings["posts_log_path"]), build_log_record(settings, post, blogger_post))

@@ -49,6 +49,12 @@ On the first run, the script opens a local OAuth flow and writes `token.json`. T
 
 ## Usage
 
+List the blogs available to your authorized Google account:
+
+```bash
+python main.py --list-blogs
+```
+
 Generate and create a Blogger draft:
 
 ```bash
@@ -60,6 +66,15 @@ Generate content without posting to Blogger:
 ```bash
 python main.py --topic "Simple automation ideas for small business owners" --dry-run
 ```
+
+Use a different env file for a different blog:
+
+```bash
+python main.py --env-file .env.film --topic "A simple guide to reviewing classic movies"
+python main.py --env-file .env.tech --topic "How small teams can use AI automation"
+```
+
+Each env file can use a different `GOOGLE_BLOGGER_BLOG_ID`. The app prints the target blog name, ID, and URL before it creates content.
 
 ## MVP Acceptance Criteria
 
