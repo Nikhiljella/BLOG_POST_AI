@@ -49,6 +49,22 @@ On the first run, the script opens a local OAuth flow and writes `token.json`. T
 
 ## Usage
 
+Start the app with the helper script.
+
+On macOS or Linux:
+
+```bash
+./run.sh --list-blogs
+./run.sh --topic "How beginners can use AI to write better study notes"
+```
+
+On Windows:
+
+```bat
+run.bat --list-blogs
+run.bat --topic "How beginners can use AI to write better study notes"
+```
+
 List the blogs available to your authorized Google account:
 
 ```bash
