@@ -33,6 +33,8 @@ GOOGLE_BLOGGER_BLOG_ID=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 BLOG_POST_STATUS=draft
+GOOGLE_SEARCH_API_KEY=
+GOOGLE_SEARCH_ENGINE_ID=
 ```
 
 ## Google Blogger Auth
@@ -46,6 +48,16 @@ https://www.googleapis.com/auth/blogger
 ```
 
 On the first run, the script opens a local OAuth flow and writes `token.json`. That file is ignored by git.
+
+## Deal Search Setup
+
+Brand deal search uses Google Programmable Search.
+
+1. Enable the Custom Search API in Google Cloud.
+2. Create an API key and set `GOOGLE_SEARCH_API_KEY`.
+3. Create a Programmable Search Engine at `programmablesearchengine.google.com`.
+4. Configure it to search the web.
+5. Copy the search engine ID into `GOOGLE_SEARCH_ENGINE_ID`.
 
 ## Usage
 
@@ -63,6 +75,18 @@ On Windows:
 ```bat
 run.bat --list-blogs
 run.bat --topic "How beginners can use AI to write better study notes"
+```
+
+Find deal links for a brand without generating a post:
+
+```bash
+./run.sh --brand "Nike" --deals-only
+```
+
+Generate a blog draft using brand deal links:
+
+```bash
+./run.sh --brand "Nike" --topic "Best Nike deals worth checking this week"
 ```
 
 List the blogs available to your authorized Google account:
